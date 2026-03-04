@@ -55,17 +55,21 @@ func apiResponse(status int, body interface{}) events.APIGatewayV2HTTPResponse {
 	}
 }
 
-func handleGetTodos(ctx context.Context) events.APIGatewayV2HTTPResponse {
+func handleGetTodos(ctx context.Context, request events.APIGatewayV2HTTPRequest) events.APIGatewayV2HTTPResponse {
+	todo.LogInfo(request, "fetching todos for user demo")
 	todos, err := store.ListToDosByUser(ctx, "demo")
 	if err != nil {
+		todo.LogError(request, "error fetching todos", err)
 		return apiResponse(http.StatusInternalServerError, errorResponse{Message: "error fetching todos"})
 	}
 	return apiResponse(http.StatusOK, todos)
 }
 
-func handleCreateTodo(ctx context.Context, body string) events.APIGatewayV2HTTPResponse {
+func handleCreateTodo(ctx context.Context, request events.APIGatewayV2HTTPRequest) events.APIGatewayV2HTTPResponse {
+	todo.LogInfo(request, "creating new todo")
 	var item todo.ItemToDo
-	if err := json.Unmarshal([]byte(body), &item); err != nil {
+	if err := json.Unmarshal([]byte(request.Body), &item); err != nil {
+		todo.LogError(request, "invalid request body", err)
 		return apiResponse(http.StatusBadRequest, errorResponse{Message: "invalid request body"})
 	}
 
@@ -73,6 +77,7 @@ func handleCreateTodo(ctx context.Context, body string) events.APIGatewayV2HTTPR
 	item.PrepareForCreate()
 
 	if err := store.CreateTodo(ctx, item); err != nil {
+		todo.LogError(request, "failed to create todo", err)
 		return apiResponse(http.StatusInternalServerError, errorResponse{Message: "failed to create todo"})
 	}
 	return apiResponse(http.StatusCreated, item)
@@ -81,36 +86,45 @@ func handleCreateTodo(ctx context.Context, body string) events.APIGatewayV2HTTPR
 func handleGetTodo(ctx context.Context, request events.APIGatewayV2HTTPRequest) events.APIGatewayV2HTTPResponse {
 	id := request.PathParameters["id"]
 	if id == "" {
+		todo.LogError(request, "missing id parameter", nil)
 		return apiResponse(http.StatusBadRequest, errorResponse{Message: "missing id parameter"})
 	}
 
+	todo.LogInfo(request, "fetching todo: "+id)
 	item, err := store.GetTodo(ctx, id)
 	if err != nil {
+		todo.LogError(request, "failed to get todo", err)
 		return apiResponse(http.StatusInternalServerError, errorResponse{Message: "failed to get todo"})
 	}
 	if item == nil {
+		todo.LogInfo(request, "todo not found: "+id)
 		return apiResponse(http.StatusNotFound, errorResponse{Message: "todo not found"})
 	}
 
 	return apiResponse(http.StatusOK, item)
 }
 
-func handleUpdateTodo(ctx context.Context, body string) events.APIGatewayV2HTTPResponse {
+func handleUpdateTodo(ctx context.Context, request events.APIGatewayV2HTTPRequest) events.APIGatewayV2HTTPResponse {
+	todo.LogInfo(request, "updating todo")
 	var item todo.ItemToDo
-	if err := json.Unmarshal([]byte(body), &item); err != nil {
+	if err := json.Unmarshal([]byte(request.Body), &item); err != nil {
+		todo.LogError(request, "invalid request body", err)
 		return apiResponse(http.StatusBadRequest, errorResponse{Message: "invalid request body"})
 	}
 
 	// 1. Recuperiamo il record esistente tramite l'ID contenuto nella SK (formato "TODO#123")
 	if len(item.Sk) <= 5 {
+		todo.LogError(request, "invalid sk format", nil)
 		return apiResponse(http.StatusBadRequest, errorResponse{Message: "invalid sk format"})
 	}
 	id := item.Sk[5:]
 	existing, err := store.GetTodo(ctx, id)
 	if err != nil {
+		todo.LogError(request, "failed to retrieve existing record", err)
 		return apiResponse(http.StatusInternalServerError, errorResponse{Message: "failed to retrieve existing record"})
 	}
 	if existing == nil {
+		todo.LogInfo(request, "todo not found for update: "+id)
 		return apiResponse(http.StatusNotFound, errorResponse{Message: "todo not found"})
 	}
 
@@ -119,6 +133,7 @@ func handleUpdateTodo(ctx context.Context, body string) events.APIGatewayV2HTTPR
 
 	// 3. Eseguiamo l'update passando sia il nuovo item che quello esistente per preservare i dati
 	if err := store.UpdateTodo(ctx, item, *existing); err != nil {
+		todo.LogError(request, "failed to update todo", err)
 		return apiResponse(http.StatusInternalServerError, errorResponse{Message: "failed to update todo"})
 	}
 
@@ -130,10 +145,13 @@ func handleUpdateTodo(ctx context.Context, body string) events.APIGatewayV2HTTPR
 func handleDeleteTodo(ctx context.Context, request events.APIGatewayV2HTTPRequest) events.APIGatewayV2HTTPResponse {
 	id := request.PathParameters["id"]
 	if id == "" {
+		todo.LogError(request, "missing id parameter", nil)
 		return apiResponse(http.StatusBadRequest, errorResponse{Message: "missing id parameter"})
 	}
 
+	todo.LogInfo(request, "deleting todo: "+id)
 	if err := store.DeleteTodo(ctx, id); err != nil {
+		todo.LogError(request, "failed to delete todo", err)
 		return apiResponse(http.StatusInternalServerError, errorResponse{Message: "failed to delete todo"})
 	}
 	return apiResponse(http.StatusNoContent, nil)
@@ -148,16 +166,16 @@ func handler(ctx context.Context, request events.APIGatewayV2HTTPRequest) (event
 		return apiResponse(http.StatusOK, healthResponse{Status: "ok"}), nil
 
 	case method == "GET" && path == "/todos":
-		return handleGetTodos(ctx), nil
+		return handleGetTodos(ctx, request), nil
 
 	case method == "POST" && path == "/todos":
-		return handleCreateTodo(ctx, request.Body), nil
+		return handleCreateTodo(ctx, request), nil
 
 	case method == "GET" && (len(path) > 7 && path[:7] == "/todos/"):
 		return handleGetTodo(ctx, request), nil
 
 	case method == "PUT" && path == "/todos":
-		return handleUpdateTodo(ctx, request.Body), nil
+		return handleUpdateTodo(ctx, request), nil
 
 	case method == "DELETE" && (len(path) > 7 && path[:7] == "/todos/"):
 		return handleDeleteTodo(ctx, request), nil
