@@ -7,6 +7,7 @@ require github.com/aws/aws-sdk-go-v2/service/dynamodb v1.56.1
 require github.com/aws/aws-sdk-go-v2/service/dynamodbstreams v1.32.12 // indirect
 
 require (
+	github.com/aws/aws-lambda-go v1.53.0
 	github.com/aws/aws-sdk-go-v2 v1.41.3 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue v1.20.34
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.19 // indirect
