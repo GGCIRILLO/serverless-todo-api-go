@@ -3,8 +3,10 @@ package todo
 import (
 	"context"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 )
 
 type DynamoStore struct {
@@ -12,6 +14,7 @@ type DynamoStore struct {
 	tableName string
 }
 
+// usata in main.go per inizializzare il DynamoStore con il client DynamoDB e il nome della tabella
 func NewDynamoStore(client *dynamodb.Client, tableName string) *DynamoStore {
 	return &DynamoStore{
 		client:    client,
@@ -71,23 +74,39 @@ func (ds *DynamoStore) GetTodo(ctx context.Context, id string) (*ItemToDo, error
 	return &todo, nil
 }
 
-func (ds *DynamoStore) ListTodos(ctx context.Context) ([]ItemToDo, error) {
-	// Esecuzione di una scansione dell'intera tabella
-	// Nota: Scan è costoso su tabelle grandi, ma per una lista semplice è il metodo più diretto
-	out, err := ds.client.Scan(ctx, &dynamodb.ScanInput{
-		TableName: &ds.tableName,
+// Nel tuo DynamoStore.ListTodos(ctx):
+
+// Costruire una query DynamoDB:
+
+// KeyConditionExpression: pk = :pk.
+
+// ExpressionAttributeValues: :pk = "USER#demo".
+
+// Chiamare client.Query(ctx, &dynamodb.QueryInput{ ... }).
+
+// Usare attributevalue.UnmarshalListOfMaps per convertire gli item DynamoDB in slice di ItemToDo.
+
+// Restituire ([]ItemToDo, error).
+
+// Quindi ListTodos è l’unico punto che “conosce” la PK fissata USER#demo.
+
+func (ds *DynamoStore) ListToDosByUser(ctx context.Context, userID string) ([]ItemToDo, error) {
+	out, err := ds.client.Query(ctx, &dynamodb.QueryInput{
+		TableName:              &ds.tableName,
+		KeyConditionExpression: aws.String("pk = :pk"),
+		ExpressionAttributeValues: map[string]types.AttributeValue{
+			":pk": &types.AttributeValueMemberS{Value: "USER#" + userID},
+		},
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	// Unmarshal dei risultati in una slice di ItemToDo
 	var todos []ItemToDo
 	err = attributevalue.UnmarshalListOfMaps(out.Items, &todos)
 	if err != nil {
 		return nil, err
 	}
-
 	return todos, nil
 }
 
