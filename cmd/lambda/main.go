@@ -101,12 +101,29 @@ func handleUpdateTodo(ctx context.Context, body string) events.APIGatewayV2HTTPR
 		return apiResponse(http.StatusBadRequest, errorResponse{Message: "invalid request body"})
 	}
 
-	// Aggiornamento automaticoUpdatedAt
+	// 1. Recuperiamo il record esistente tramite l'ID contenuto nella SK (formato "TODO#123")
+	if len(item.Sk) <= 5 {
+		return apiResponse(http.StatusBadRequest, errorResponse{Message: "invalid sk format"})
+	}
+	id := item.Sk[5:]
+	existing, err := store.GetTodo(ctx, id)
+	if err != nil {
+		return apiResponse(http.StatusInternalServerError, errorResponse{Message: "failed to retrieve existing record"})
+	}
+	if existing == nil {
+		return apiResponse(http.StatusNotFound, errorResponse{Message: "todo not found"})
+	}
+
+	// 2. Aggiornamento automatico UpdatedAt
 	item.PrepareForUpdate()
 
-	if err := store.UpdateTodo(ctx, item); err != nil {
+	// 3. Eseguiamo l'update passando sia il nuovo item che quello esistente per preservare i dati
+	if err := store.UpdateTodo(ctx, item, *existing); err != nil {
 		return apiResponse(http.StatusInternalServerError, errorResponse{Message: "failed to update todo"})
 	}
+
+	// Restituiamo l'oggetto aggiornato (con il createdAt originale recuperato)
+	item.CreatedAt = existing.CreatedAt
 	return apiResponse(http.StatusOK, item)
 }
 

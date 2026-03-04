@@ -94,26 +94,17 @@ func (ds *DynamoStore) ListToDosByUser(ctx context.Context, userID string) ([]It
 	return todos, nil
 }
 
-func (ds *DynamoStore) UpdateTodo(ctx context.Context, todo ItemToDo) error {
-	// 1. Recuperiamo il record esistente per preservare il createdAt originale
-	existing, err := ds.GetTodo(ctx, todo.Sk[5:]) // Rimuoviamo "TODO#" per usare GetTodo
-	if err != nil {
-		return err
-	}
-	if existing == nil {
-		return ErrTodoNotFound
-	}
-
-	// 2. Preserviamo il createdAt
+func (ds *DynamoStore) UpdateTodo(ctx context.Context, todo ItemToDo, existing ItemToDo) error {
+	// 1. Preserviamo il createdAt originale e altri campi che non dovrebbero cambiare
 	todo.CreatedAt = existing.CreatedAt
 
-	// 3. Marshall dell'oggetto aggiornato
+	// 2. Marshall dell'oggetto aggiornato
 	av, err := attributevalue.MarshalMap(todo)
 	if err != nil {
 		return err
 	}
 
-	// 4. Update tramite sovrascrittura (ora includendo il createdAt corretto)
+	// 3. Update tramite sovrascrittura
 	_, err = ds.client.PutItem(ctx, &dynamodb.PutItemInput{
 		TableName: &ds.tableName,
 		Item:      av,
