@@ -37,6 +37,7 @@ func (item *ItemToDo) PrepareForCreate() {
 }
 
 func (item *ItemToDo) PrepareForUpdate() {
+	item.Pk = "USER#demo"
 	item.UpdatedAt = time.Now().Format(time.RFC3339)
 }
 
