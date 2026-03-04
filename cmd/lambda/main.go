@@ -69,6 +69,9 @@ func handleCreateTodo(ctx context.Context, body string) events.APIGatewayV2HTTPR
 		return apiResponse(http.StatusBadRequest, errorResponse{Message: "invalid request body"})
 	}
 
+	// Popolamento automatico campi
+	item.PrepareForCreate()
+
 	if err := store.CreateTodo(ctx, item); err != nil {
 		return apiResponse(http.StatusInternalServerError, errorResponse{Message: "failed to create todo"})
 	}
@@ -97,6 +100,9 @@ func handleUpdateTodo(ctx context.Context, body string) events.APIGatewayV2HTTPR
 	if err := json.Unmarshal([]byte(body), &item); err != nil {
 		return apiResponse(http.StatusBadRequest, errorResponse{Message: "invalid request body"})
 	}
+
+	// Aggiornamento automaticoUpdatedAt
+	item.PrepareForUpdate()
 
 	if err := store.UpdateTodo(ctx, item); err != nil {
 		return apiResponse(http.StatusInternalServerError, errorResponse{Message: "failed to update todo"})
