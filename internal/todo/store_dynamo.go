@@ -74,21 +74,6 @@ func (ds *DynamoStore) GetTodo(ctx context.Context, id string) (*ItemToDo, error
 	return &todo, nil
 }
 
-// Nel tuo DynamoStore.ListTodos(ctx):
-
-// Costruire una query DynamoDB:
-
-// KeyConditionExpression: pk = :pk.
-
-// ExpressionAttributeValues: :pk = "USER#demo".
-
-// Chiamare client.Query(ctx, &dynamodb.QueryInput{ ... }).
-
-// Usare attributevalue.UnmarshalListOfMaps per convertire gli item DynamoDB in slice di ItemToDo.
-
-// Restituire ([]ItemToDo, error).
-
-// Quindi ListTodos è l’unico punto che “conosce” la PK fissata USER#demo.
 
 func (ds *DynamoStore) ListToDosByUser(ctx context.Context, userID string) ([]ItemToDo, error) {
 	out, err := ds.client.Query(ctx, &dynamodb.QueryInput{
