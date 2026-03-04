@@ -1,23 +1,5 @@
 package todo
 
-// Tipo DynamoStore con:
-
-// campo client *dynamodb.Client.
-
-// campo tableName string.
-
-// Metodi:
-
-// CreateTodo(ctx, todo).
-
-// GetTodo(ctx, id).
-
-// ListTodos(ctx).
-
-// UpdateTodo(ctx, todo).
-
-// DeleteTodo(ctx, id).
-
 import (
 	"context"
 
