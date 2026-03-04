@@ -1,7 +1,7 @@
 # build lambda 
 build:
-	GOOS=linux GOARCH=amd64 go build -o main main.go
+	GOOS=linux GOARCH=amd64 go build -o bootstrap ./cmd/lambda
 # zip lambda
-zip:	zip main.zip main
+zip:	zip function.zip bootstrap
 # clean up
 clean:	rm -f main main.zip
